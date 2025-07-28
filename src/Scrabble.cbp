@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="Scrabble" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/Scrabble" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/Scrabble" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="0" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add directory="D:/CodeSDL/SDL2-2.26.3/x86_64-w64-mingw32/include" />
+			<Add directory="D:/CodeSDL/SDLProject/Scrabble/SDL2_ttf-2.20.2/x86_64-w64-mingw32/include" />
+		</Compiler>
+		<Linker>
+			<Add library="mingw32" />
+			<Add library="SDL2main" />
+			<Add library="SDL2.dll" />
+			<Add library="SDL2_ttf" />
+			<Add library="user32" />
+			<Add library="gdi32" />
+			<Add library="winmm" />
+			<Add library="dxguid" />
+			<Add directory="D:/CodeSDL/SDL2-2.26.3/x86_64-w64-mingw32/lib" />
+			<Add directory="D:/CodeSDL/SDLProject/Scrabble/SDL2_ttf-2.20.2/x86_64-w64-mingw32/lib" />
+		</Linker>
+		<ExtraCommands>
+			<Add after="XCOPY $(#sdl2)\bin\*.dll $(TARGET_OUTPUT_DIR) /D /Y" />
+		</ExtraCommands>
+		<Unit filename="main.cpp" />
+		<Unit filename="Menu.h" />
+		<Unit filename="Menu.cpp" />
+		<Unit filename="GameWindow.h" />
+		<Unit filename="GameWindow.cpp" />
+		<Unit filename="ScrabbleGame.h" />
+		<Unit filename="ScrabbleGame.cpp" />
+		<Extensions>
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
