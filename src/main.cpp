@@ -1,41 +1,128 @@
-#include "../include/GameLogic.h"
+#include "../include/game.h"
 #include <iostream>
+#include <sstream>
+#include <algorithm>
+
+using namespace std;
+
+// In bàn cờ
+void print_board(const vector<vector<char>> &board)
+{
+    cout << "   ";
+    for (int i = 0; i < 15; ++i)
+        cout << i % 10 << " ";
+    cout << endl;
+    for (int i = 0; i < 15; ++i)
+    {
+        cout << i % 10 << " ";
+        for (int j = 0; j < 15; ++j)
+        {
+            cout << (board[i][j] == '.' ? '.' : board[i][j]) << " ";
+        }
+        cout << endl;
+    }
+}
+
+// In giá chữ
+void print_rack(const vector<char> &rack)
+{
+    cout << "Rack: ";
+    for (char c : rack)
+        cout << c << " ";
+    cout << endl;
+}
 
 int main()
 {
-    GameLogic game(10, "../assets/dictionary/Collins Scrabble Words (2019).txt");
+    cout << "Starting Scrabble Game (2 players)\n";
+    Game game(2);
 
-    while (true)
+    while (!game.is_game_over())
     {
-        game.printBoard();
+        Player &player = game.get_current_player();
+        cout << "\n=== " << player.get_name() << "'s Turn ===\n";
+        cout << "Score: " << player.get_score() << endl;
+        print_rack(player.get_rack());
+        print_board(game.get_board()); // Sửa lỗi: gọi get_board thay vì get_rack
 
-        std::string word;
-        int row, col, dirInput;
-        std::cout << "\nNhập từ (in hoa hoặc thường, ENTER để thoát): ";
-        std::getline(std::cin, word);
-        if (word.empty())
-            break;
+        cout << "\nOptions:\n";
+        cout << "1. Place word (e.g., 'word row col h/v')\n";
+        cout << "2. Swap letters (e.g., 'A B C')\n";
+        cout << "3. Pass turn\n";
+        cout << "Enter choice (1/2/3): ";
 
-        std::cout << "Vị trí bắt đầu (row col): ";
-        std::cin >> row >> col;
+        int choice;
+        cin >> choice;
+        cin.ignore(); // Xóa bộ đệm
 
-        std::cout << "Hướng (0: ngang, 1: dọc): ";
-        std::cin >> dirInput;
-        std::cin.ignore(); // clear newline
-
-        Direction dir = (dirInput == 0) ? Direction::HORIZONTAL : Direction::VERTICAL;
-
-        if (game.placeWord(word, {row, col}, dir))
+        if (choice == 1)
         {
-            int score = game.calculateScore(word, {row, col}, dir);
-            std::cout << "✔️  Đặt từ thành công! Điểm: " << score << "\n";
+            string input;
+            cout << "Enter word, row, col, direction (h/v): ";
+            getline(cin, input);
+            stringstream ss(input);
+            string word;
+            int row, col;
+            char dir;
+            ss >> word >> row >> col >> dir;
+
+            // Chuyển từ thành chữ hoa
+            transform(word.begin(), word.end(), word.begin(), ::toupper);
+
+            bool horizontal = (dir == 'h' || dir == 'H');
+            if (game.place_word(word, row, col, horizontal))
+            {
+                cout << "Word placed successfully! Score: " << player.get_score() << endl;
+                game.end_turn();
+            }
+            else
+            {
+                cout << "Invalid placement. Try again.\n";
+            }
+        }
+        else if (choice == 2)
+        {
+            string input;
+            cout << "Enter letters to swap (e.g., A B C): ";
+            getline(cin, input);
+            stringstream ss(input);
+            vector<char> letters;
+            char c;
+            while (ss >> c)
+            {
+                letters.push_back(toupper(c));
+            }
+
+            if (game.swap_letters(letters))
+            {
+                cout << "Letters swapped successfully!\n";
+                game.end_turn();
+            }
+            else
+            {
+                cout << "Invalid swap. Try again.\n";
+            }
+        }
+        else if (choice == 3)
+        {
+            game.pass_turn();
+            cout << "Turn passed.\n";
         }
         else
         {
-            std::cout << "❌ Không đặt được từ này.\n";
+            cout << "Invalid choice. Try again.\n";
         }
     }
 
-    std::cout << "Trò chơi kết thúc!\n";
+    Player *winner = game.get_winner();
+    if (winner)
+    {
+        cout << "\nGame Over! Winner: " << winner->get_name() << " with score " << winner->get_score() << endl;
+    }
+    else
+    {
+        cout << "\nGame Over! No winner determined.\n";
+    }
+
     return 0;
 }
