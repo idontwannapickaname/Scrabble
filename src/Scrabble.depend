@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1753671958 source:d:\codesdl\sdlproject\scrabble\main.cpp
+1754293321 source:d:\codesdl\sdlproject\scrabble\main.cpp
 	<exception>
 	<string>
 	<iostream>
@@ -397,13 +397,13 @@
 	"begin_code.h"
 	"close_code.h"
 
-1753683699 d:\codesdl\sdlproject\scrabble\menu.h
+1754290467 d:\codesdl\sdlproject\scrabble\menu.h
 	<SDL2/SDL.h>
 	<SDL2/SDL_ttf.h>
 	<string>
 	<vector>
 
-1753684629 source:d:\codesdl\sdlproject\scrabble\menu.cpp
+1754290572 source:d:\codesdl\sdlproject\scrabble\menu.cpp
 	"Menu.h"
 	<iostream>
 
@@ -412,25 +412,74 @@
 	"begin_code.h"
 	"close_code.h"
 
-1753672177 d:\codesdl\sdlproject\scrabble\gamewindow.h
+1754293321 d:\codesdl\sdlproject\scrabble\gamewindow.h
 	<SDL2/SDL.h>
 	<string>
 	"ScrabbleGame.h"
 
-1753672903 d:\codesdl\sdlproject\scrabble\scrabblegame.h
+1754292781 d:\codesdl\sdlproject\scrabble\scrabblegame.h
 	<SDL2/SDL.h>
 	<SDL2/SDL_ttf.h>
 	<vector>
 	<string>
 	<map>
 
-1753672669 source:d:\codesdl\sdlproject\scrabble\gamewindow.cpp
+1754293912 source:d:\codesdl\sdlproject\scrabble\gamewindow.cpp
 	"GameWindow.h"
 	<iostream>
 
-1753672945 source:d:\codesdl\sdlproject\scrabble\scrabblegame.cpp
+1754291575 source:d:\codesdl\sdlproject\scrabble\scrabblegame.cpp
 	"ScrabbleGame.h"
 	<iostream>
 	<algorithm>
 	<random>
+	<chrono>
+
+1675730672 d:\codesdl\sdlproject\scrabble\sdl2_image-2.6.3\x86_64-w64-mingw32\include\sdl2\sdl_image.h
+	"SDL.h"
+	"SDL_version.h"
+	"begin_code.h"
+	"close_code.h"
+
+1754293912 source:c:\users\admin\desktop\projectltnc\src\gamewindow.cpp
+	"GameWindow.h"
+	<iostream>
+
+1754293321 c:\users\admin\desktop\projectltnc\src\gamewindow.h
+	<SDL2/SDL.h>
+	<string>
+	"ScrabbleGame.h"
+
+1754292781 c:\users\admin\desktop\projectltnc\src\scrabblegame.h
+	<SDL2/SDL.h>
+	<SDL2/SDL_ttf.h>
+	<vector>
+	<string>
+	<map>
+
+1754293321 source:c:\users\admin\desktop\projectltnc\src\main.cpp
+	<exception>
+	<string>
+	<iostream>
+	<SDL2/SDL.h>
+	<SDL2/SDL_ttf.h>
+	"Menu.h"
+	"GameWindow.h"
+
+1754290467 c:\users\admin\desktop\projectltnc\src\menu.h
+	<SDL2/SDL.h>
+	<SDL2/SDL_ttf.h>
+	<string>
+	<vector>
+
+1754290572 source:c:\users\admin\desktop\projectltnc\src\menu.cpp
+	"Menu.h"
+	<iostream>
+
+1754294069 source:c:\users\admin\desktop\projectltnc\src\scrabblegame.cpp
+	"ScrabbleGame.h"
+	<iostream>
+	<algorithm>
+	<random>
+	<chrono>
 

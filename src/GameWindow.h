@@ -27,6 +27,7 @@ public:
     void update();
     
     bool isRunning() const { return m_running; }
+    bool isGameRunning() const; // Add method to check if Scrabble game is still running
 };
 
 #endif // GAMEWINDOW_H 

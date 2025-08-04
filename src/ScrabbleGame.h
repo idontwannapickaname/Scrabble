@@ -15,14 +15,14 @@ private:
     static const int BOARD_SIZE = 15;
     char m_board[BOARD_SIZE][BOARD_SIZE];
     int m_boardMultipliers[BOARD_SIZE][BOARD_SIZE]; // 1=normal, 2=double, 3=triple
+    bool m_boardWordMultipliers[BOARD_SIZE][BOARD_SIZE];  // true=word multiplier, false=letter multiplier
     
     // Player tiles
     std::vector<char> m_playerTiles;
     std::vector<char> m_tileBag;
     
     // Game state
-    int m_currentPlayer;
-    int m_playerScores[2];
+    int m_playerScore;  // Single player score
     bool m_gameRunning;
     
     // UI elements
@@ -30,12 +30,14 @@ private:
     SDL_Rect m_tileRects[7];
     SDL_Rect m_scoreRect;
     SDL_Rect m_currentTileRect;
+    SDL_Rect m_quitButtonRect; // Add quit button
     
     // Colors
     SDL_Color m_boardColor;
     SDL_Color m_tileColor;
     SDL_Color m_textColor;
     SDL_Color m_selectedColor;
+    SDL_Color m_quitButtonColor; // Add quit button color
     
     // Fonts
     TTF_Font* m_tileFont;
@@ -64,6 +66,9 @@ public:
     // Add method to handle events from GameWindow
     void handleEvent(const SDL_Event& event);
     
+    // Game state
+    bool isRunning() const { return m_gameRunning; }
+    
     // Game logic
     void initializeBoard();
     void initializeTileBag();
@@ -74,12 +79,14 @@ public:
     bool isValidPlacement(int x, int y);
     int calculateScore(const std::string& word);
     void refillPlayerTiles();
+    void resetGame(); // Add new method to reset game with new tiles
+    void drawQuitButton(); // Add method to draw quit button
+    bool isQuitButtonClicked(int x, int y); // Add method to check quit button click
     
     // UI helpers
     void drawTile(int x, int y, char tile, bool selected = false);
-    void drawText(int x, int y, const std::string& text, TTF_Font* font, SDL_Color color);
-    
-    bool isGameRunning() const { return m_gameRunning; }
+    void drawText(int x, int y, const std::string& text, TTF_Font* font,
+                  SDL_Color color);
 };
 
-#endif // SCRABBLEGAME_H 
+#endif 

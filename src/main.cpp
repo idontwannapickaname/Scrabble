@@ -45,7 +45,7 @@ public:
     SDL( Uint32 flags = 0 );
     virtual ~SDL();
     void draw();
-    void runMenu();
+    Menu::MenuAction runMenu();
     void runGame();
 };
 
@@ -101,12 +101,12 @@ void SDL::draw()
     }
 }
 
-void SDL::runMenu()
+Menu::MenuAction SDL::runMenu()
 {
     Menu menu(m_window, m_renderer);
     if (!menu.init()) {
         std::cerr << "Failed to initialize menu!" << std::endl;
-        return;
+        return Menu::QUIT;
     }
     
     menu.run();
@@ -115,20 +115,17 @@ void SDL::runMenu()
     switch (action) {
         case Menu::PLAY:
             runGame();
-            break;
+            return Menu::PLAY; // Return to menu after game
         case Menu::QUIT:
-            // Exit the application
-            break;
+            return Menu::QUIT; // Exit the application
         default:
-            break;
+            return Menu::QUIT;
     }
 }
 
 void SDL::runGame()
 {
     // Create and run game window
-    std::cout << "Starting Scrabble game..." << std::endl;
-    
     GameWindow gameWindow;
     if (!gameWindow.init()) {
         std::cerr << "Failed to initialize game window!" << std::endl;
@@ -136,8 +133,6 @@ void SDL::runGame()
     }
     
     gameWindow.run();
-    
-    std::cout << "Game window closed, returning to menu..." << std::endl;
 }
 
 int main( int argc, char * argv[] )
@@ -145,7 +140,17 @@ int main( int argc, char * argv[] )
     try
     {
         SDL sdl( SDL_INIT_VIDEO | SDL_INIT_TIMER );
-        sdl.runMenu();
+        
+        // Main game loop - keep running until user quits
+        bool running = true;
+        while (running) {
+            Menu::MenuAction action = sdl.runMenu();
+            
+            // If we get here, user chose to quit from menu
+            if (action == Menu::QUIT) {
+                running = false;
+            }
+        }
 
         return 0;
     }
