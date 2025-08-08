@@ -37,7 +37,7 @@ Game::Game(int num_players) : current_player(0), rng(time(nullptr))
     initialize_letter_bag();
 
     // Nạp từ điển
-    load_dictionary("../assets/dictionary/dictionary.txt");
+    load_dictionary("/home/minhbui/Code/Scrabble/assets/dictionary/dictionary.txt");
 
     // Khởi tạo người chơi
     for (int i = 0; i < num_players; ++i)
@@ -65,17 +65,36 @@ void Game::load_dictionary(const string &filename)
         dictionary = {"HELLO", "WORLD", "SCRABBLE", "GAME"}; // Từ điển mặc định
         return;
     }
+
     string word;
+    int loaded_words = 0;
     while (getline(file, word))
     {
-        // Chuyển từ thành chữ hoa và loại bỏ ký tự không cần thiết
+        // Trim khoảng trắng đầu và cuối (nếu có)
+        word.erase(word.begin(), find_if(word.begin(), word.end(), [](unsigned char ch)
+                                         { return !isspace(ch); }));
+        word.erase(find_if(word.rbegin(), word.rend(), [](unsigned char ch)
+                           { return !isspace(ch); })
+                       .base(),
+                   word.end());
+
+        // Chuyển thành chữ hoa
         transform(word.begin(), word.end(), word.begin(), ::toupper);
+
+        // Kiểm tra từ có hợp lệ không (chỉ A-Z)
         if (!word.empty() && word.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ") == string::npos)
         {
             dictionary.insert(word);
+            loaded_words++;
+        }
+        else if (!word.empty())
+        {
+            cerr << "Skipping invalid word: " << word << endl;
         }
     }
+
     file.close();
+    // cout << "Dictionary loaded with " << loaded_words << " valid words." << endl;
 }
 
 void Game::initialize_letter_bag()

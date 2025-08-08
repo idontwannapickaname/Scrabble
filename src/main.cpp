@@ -37,13 +37,15 @@ int main()
     cout << "Starting Scrabble Game (2 players)\n";
     Game game(2);
 
+    bool first_word_placed = false;
+
     while (!game.is_game_over())
     {
         Player &player = game.get_current_player();
         cout << "\n=== " << player.get_name() << "'s Turn ===\n";
         cout << "Score: " << player.get_score() << endl;
         print_rack(player.get_rack());
-        print_board(game.get_board()); // Sửa lỗi: gọi get_board thay vì get_rack
+        print_board(game.get_board());
 
         cout << "\nOptions:\n";
         cout << "1. Place word (e.g., 'word row col h/v')\n";
@@ -70,8 +72,16 @@ int main()
             transform(word.begin(), word.end(), word.begin(), ::toupper);
 
             bool horizontal = (dir == 'h' || dir == 'H');
+
+            // Kiểm tra từ đầu tiên phải bắt đầu từ (7,7)
+            if (!first_word_placed && (row != 7 || col != 7)) {
+                cout << "First word must start at row 7, column 7! Try again.\n";
+                continue;
+            }
+
             if (game.place_word(word, row, col, horizontal))
             {
+                if (!first_word_placed) first_word_placed = true;
                 cout << "Word placed successfully! Score: " << player.get_score() << endl;
                 game.end_turn();
             }
