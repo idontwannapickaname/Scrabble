@@ -1,138 +1,115 @@
-#include "../include/game.h"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <iostream>
-#include <sstream>
-#include <algorithm>
+#include <vector>
+#include "../include/Board.h"
+#include "../include/Tile.h"
+#include "../include/PlayerRack.h"
 
-using namespace std;
+const int SCREEN_WIDTH = 960;   // 15*64 = 960
+const int SCREEN_HEIGHT = 1024; // Board 960 + rack area
 
-// In bàn cờ
-void print_board(const vector<vector<char>> &board)
+int main(int argc, char *args[])
 {
-    cout << "   ";
-    for (int i = 0; i < 15; ++i)
-        cout << i % 10 << " ";
-    cout << endl;
-    for (int i = 0; i < 15; ++i)
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
-        cout << i % 10 << " ";
-        for (int j = 0; j < 15; ++j)
-        {
-            cout << (board[i][j] == '.' ? '.' : board[i][j]) << " ";
-        }
-        cout << endl;
-    }
-}
-
-// In giá chữ
-void print_rack(const vector<char> &rack)
-{
-    cout << "Rack: ";
-    for (char c : rack)
-        cout << c << " ";
-    cout << endl;
-}
-
-int main()
-{
-    cout << "Starting Scrabble Game (2 players)\n";
-    Game game(2);
-
-    bool first_word_placed = false;
-
-    while (!game.is_game_over())
-    {
-        Player &player = game.get_current_player();
-        cout << "\n=== " << player.get_name() << "'s Turn ===\n";
-        cout << "Score: " << player.get_score() << endl;
-        print_rack(player.get_rack());
-        print_board(game.get_board());
-
-        cout << "\nOptions:\n";
-        cout << "1. Place word (e.g., 'word row col h/v')\n";
-        cout << "2. Swap letters (e.g., 'A B C')\n";
-        cout << "3. Pass turn\n";
-        cout << "Enter choice (1/2/3): ";
-
-        int choice;
-        cin >> choice;
-        cin.ignore(); // Xóa bộ đệm
-
-        if (choice == 1)
-        {
-            string input;
-            cout << "Enter word, row, col, direction (h/v): ";
-            getline(cin, input);
-            stringstream ss(input);
-            string word;
-            int row, col;
-            char dir;
-            ss >> word >> row >> col >> dir;
-
-            // Chuyển từ thành chữ hoa
-            transform(word.begin(), word.end(), word.begin(), ::toupper);
-
-            bool horizontal = (dir == 'h' || dir == 'H');
-
-            // Kiểm tra từ đầu tiên phải bắt đầu từ (7,7)
-            if (!first_word_placed && (row != 7 || col != 7)) {
-                cout << "First word must start at row 7, column 7! Try again.\n";
-                continue;
-            }
-
-            if (game.place_word(word, row, col, horizontal))
-            {
-                if (!first_word_placed) first_word_placed = true;
-                cout << "Word placed successfully! Score: " << player.get_score() << endl;
-                game.end_turn();
-            }
-            else
-            {
-                cout << "Invalid placement. Try again.\n";
-            }
-        }
-        else if (choice == 2)
-        {
-            string input;
-            cout << "Enter letters to swap (e.g., A B C): ";
-            getline(cin, input);
-            stringstream ss(input);
-            vector<char> letters;
-            char c;
-            while (ss >> c)
-            {
-                letters.push_back(toupper(c));
-            }
-
-            if (game.swap_letters(letters))
-            {
-                cout << "Letters swapped successfully!\n";
-                game.end_turn();
-            }
-            else
-            {
-                cout << "Invalid swap. Try again.\n";
-            }
-        }
-        else if (choice == 3)
-        {
-            game.pass_turn();
-            cout << "Turn passed.\n";
-        }
-        else
-        {
-            cout << "Invalid choice. Try again.\n";
-        }
+        std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
+        return 1;
     }
 
-    Player *winner = game.get_winner();
-    if (winner)
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG))
     {
-        cout << "\nGame Over! Winner: " << winner->get_name() << " with score " << winner->get_score() << endl;
+        std::cerr << "SDL_image could not initialize! SDL_image Error: " << IMG_GetError() << std::endl;
+        return 1;
     }
-    else
+
+    SDL_Window *window = SDL_CreateWindow("Scrabble Board", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    if (!window)
     {
-        cout << "\nGame Over! No winner determined.\n";
+        std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
+        return 1;
     }
+
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (!renderer)
+    {
+        std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+
+    Board board(renderer, "assets/images/TDTile-Black-64x64.png");             // Assuming the tileset image is this
+    PlayerRack rack(renderer, "assets/images/Thick-Wood_01a-Black-64x64.png"); // Replace with your letters image filename
+
+    // Sample tiles for rack (A, B, C for demo)
+    rack.addTile(Tile(renderer, 'A', 1, "assets/images/Thick-Wood_01a-Black-64x64.png", 0)); // Assuming letters.png has letters in order, index 0 for A
+    rack.addTile(Tile(renderer, 'B', 3, "assets/images/Thick-Wood_01a-Black-64x64.png", 1));
+    rack.addTile(Tile(renderer, 'C', 3, "assets/images/Thick-Wood_01a-Black-64x64.png", 2));
+
+    Tile *draggedTile = nullptr;
+    int dragOffsetX = 0, dragOffsetY = 0;
+
+    bool quit = false;
+    SDL_Event e;
+
+    while (!quit)
+    {
+        while (SDL_PollEvent(&e) != 0)
+        {
+            if (e.type == SDL_QUIT)
+            {
+                quit = true;
+            }
+            else if (e.type == SDL_MOUSEBUTTONDOWN)
+            {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                draggedTile = rack.getTileAt(x, y - 960); // Rack is below board at y=960
+                if (draggedTile)
+                {
+                    dragOffsetX = x - draggedTile->getX();
+                    dragOffsetY = y - draggedTile->getY();
+                    draggedTile->setDragging(true);
+                }
+            }
+            else if (e.type == SDL_MOUSEMOTION && draggedTile)
+            {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                draggedTile->setPosition(x - dragOffsetX, y - dragOffsetY);
+            }
+            else if (e.type == SDL_MOUSEBUTTONUP && draggedTile)
+            {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                // Snap to board if dropped on board
+                if (y < 960)
+                {
+                    int boardX = x / 64;
+                    int boardY = y / 64;
+                    if (boardX >= 0 && boardX < 15 && boardY >= 0 && boardY < 15)
+                    {
+                        board.placeTile(boardX, boardY, *draggedTile);
+                        rack.removeTile(draggedTile);
+                    }
+                }
+                draggedTile->setDragging(false);
+                draggedTile = nullptr;
+            }
+        }
+
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderClear(renderer);
+
+        board.render(0, 0);
+        rack.render(0, 960); // Render rack below the board
+
+        SDL_RenderPresent(renderer);
+    }
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    IMG_Quit();
+    SDL_Quit();
 
     return 0;
 }
