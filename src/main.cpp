@@ -1,138 +1,165 @@
-#include "../include/game.h"
+#include <exception>
+#include <string>
 #include <iostream>
-#include <sstream>
-#include <algorithm>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
+#include "Menu.h"
+#include "GameWindow.h"
 
-using namespace std;
-
-// In bàn cờ
-void print_board(const vector<vector<char>> &board)
+class InitError : public std::exception
 {
-    cout << "   ";
-    for (int i = 0; i < 15; ++i)
-        cout << i % 10 << " ";
-    cout << endl;
-    for (int i = 0; i < 15; ++i)
+    std::string msg;
+public:
+    InitError();
+    InitError( const std::string & );
+    virtual ~InitError() throw();
+    virtual const char * what() const throw();
+};
+
+InitError::InitError() :
+    exception(),
+    msg( SDL_GetError() )
+{
+}
+
+InitError::InitError( const std::string & m ) :
+    exception(),
+    msg( m )
+{
+}
+
+InitError::~InitError() throw()
+{
+}
+
+const char * InitError::what() const throw()
+{
+    return msg.c_str();
+}
+
+class SDL
+{
+    SDL_Window * m_window;
+    SDL_Renderer * m_renderer;
+public:
+    SDL( Uint32 flags = 0 );
+    virtual ~SDL();
+    void draw();
+    Menu::MenuAction runMenu();
+    void runGame();
+};
+
+SDL::SDL( Uint32 flags )
+{
+    if ( SDL_Init( flags ) != 0 )
+        throw InitError();
+
+    if ( SDL_CreateWindowAndRenderer( 800, 600, SDL_WINDOW_SHOWN,
+                                      &m_window, &m_renderer ) != 0 )
+        throw InitError();
+        
+    // Set window title
+    SDL_SetWindowTitle(m_window, "Scrabble Game");
+}
+
+SDL::~SDL()
+{
+    SDL_DestroyWindow( m_window );
+    SDL_DestroyRenderer( m_renderer );
+    SDL_Quit();
+}
+
+void SDL::draw()
+{
+    // Clear the window with a black background
+    SDL_SetRenderDrawColor( m_renderer, 0, 0, 0, 255 );
+    SDL_RenderClear( m_renderer );
+
+    // Show the window
+    SDL_RenderPresent( m_renderer );
+
+    int rgb[] = { 203, 203, 203, // Gray
+                  254, 254,  31, // Yellow
+                    0, 255, 255, // Cyan
+                    0, 254,  30, // Green
+                  255,  16, 253, // Magenta
+                  253,   3,   2, // Red
+                   18,  14, 252, // Blue
+                    0,   0,   0  // Black
+                };
+
+    SDL_Rect colorBar;
+    colorBar.x = 0; colorBar.y = 0; colorBar.w = 90; colorBar.h = 480;
+
+    // Render a new color bar every 0.5 seconds
+    for ( int i = 0; i != sizeof rgb / sizeof *rgb; i += 3, colorBar.x += 90 )
     {
-        cout << i % 10 << " ";
-        for (int j = 0; j < 15; ++j)
-        {
-            cout << (board[i][j] == '.' ? '.' : board[i][j]) << " ";
-        }
-        cout << endl;
+        SDL_SetRenderDrawColor( m_renderer, rgb[i], rgb[i + 1], rgb[i + 2], 255 );
+        SDL_RenderFillRect( m_renderer, &colorBar );
+        SDL_RenderPresent( m_renderer );
+        SDL_Delay( 500 );
     }
 }
 
-// In giá chữ
-void print_rack(const vector<char> &rack)
+Menu::MenuAction SDL::runMenu()
 {
-    cout << "Rack: ";
-    for (char c : rack)
-        cout << c << " ";
-    cout << endl;
+    Menu menu(m_window, m_renderer);
+    if (!menu.init()) {
+        std::cerr << "Failed to initialize menu!" << std::endl;
+        return Menu::QUIT;
+    }
+    
+    menu.run();
+    
+    Menu::MenuAction action = menu.getSelectedAction();
+    switch (action) {
+        case Menu::PLAY:
+            runGame();
+            return Menu::PLAY; // Return to menu after game
+        case Menu::QUIT:
+            return Menu::QUIT; // Exit the application
+        default:
+            return Menu::QUIT;
+    }
 }
 
-int main()
+void SDL::runGame()
 {
-    cout << "Starting Scrabble Game (2 players)\n";
-    Game game(2);
+    // Create and run game window
+    GameWindow gameWindow;
+    if (!gameWindow.init()) {
+        std::cerr << "Failed to initialize game window!" << std::endl;
+        return;
+    }
+    
+    gameWindow.run();
+}
 
-    bool first_word_placed = false;
-
-    while (!game.is_game_over())
+int main( int argc, char * argv[] )
+{
+    try
     {
-        Player &player = game.get_current_player();
-        cout << "\n=== " << player.get_name() << "'s Turn ===\n";
-        cout << "Score: " << player.get_score() << endl;
-        print_rack(player.get_rack());
-        print_board(game.get_board());
-
-        cout << "\nOptions:\n";
-        cout << "1. Place word (e.g., 'word row col h/v')\n";
-        cout << "2. Swap letters (e.g., 'A B C')\n";
-        cout << "3. Pass turn\n";
-        cout << "Enter choice (1/2/3): ";
-
-        int choice;
-        cin >> choice;
-        cin.ignore(); // Xóa bộ đệm
-
-        if (choice == 1)
-        {
-            string input;
-            cout << "Enter word, row, col, direction (h/v): ";
-            getline(cin, input);
-            stringstream ss(input);
-            string word;
-            int row, col;
-            char dir;
-            ss >> word >> row >> col >> dir;
-
-            // Chuyển từ thành chữ hoa
-            transform(word.begin(), word.end(), word.begin(), ::toupper);
-
-            bool horizontal = (dir == 'h' || dir == 'H');
-
-            // Kiểm tra từ đầu tiên phải bắt đầu từ (7,7)
-            if (!first_word_placed && (row != 7 || col != 7)) {
-                cout << "First word must start at row 7, column 7! Try again.\n";
-                continue;
-            }
-
-            if (game.place_word(word, row, col, horizontal))
-            {
-                if (!first_word_placed) first_word_placed = true;
-                cout << "Word placed successfully! Score: " << player.get_score() << endl;
-                game.end_turn();
-            }
-            else
-            {
-                cout << "Invalid placement. Try again.\n";
+        SDL sdl( SDL_INIT_VIDEO | SDL_INIT_TIMER );
+        
+        // Main game loop - keep running until user quits
+        bool running = true;
+        while (running) {
+            Menu::MenuAction action = sdl.runMenu();
+            
+            // If we get here, user chose to quit from menu
+            if (action == Menu::QUIT) {
+                running = false;
             }
         }
-        else if (choice == 2)
-        {
-            string input;
-            cout << "Enter letters to swap (e.g., A B C): ";
-            getline(cin, input);
-            stringstream ss(input);
-            vector<char> letters;
-            char c;
-            while (ss >> c)
-            {
-                letters.push_back(toupper(c));
-            }
 
-            if (game.swap_letters(letters))
-            {
-                cout << "Letters swapped successfully!\n";
-                game.end_turn();
-            }
-            else
-            {
-                cout << "Invalid swap. Try again.\n";
-            }
-        }
-        else if (choice == 3)
-        {
-            game.pass_turn();
-            cout << "Turn passed.\n";
-        }
-        else
-        {
-            cout << "Invalid choice. Try again.\n";
-        }
+        return 0;
+    }
+    catch ( const InitError & err )
+    {
+        std::cerr << "Error while initializing SDL:  "
+                  << err.what()
+                  << std::endl;
     }
 
-    Player *winner = game.get_winner();
-    if (winner)
-    {
-        cout << "\nGame Over! Winner: " << winner->get_name() << " with score " << winner->get_score() << endl;
-    }
-    else
-    {
-        cout << "\nGame Over! No winner determined.\n";
-    }
-
-    return 0;
+    return 1;
 }
