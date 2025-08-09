@@ -1,2 +1,2 @@
 # Scrabble
-A scribble game made with SDL
+A scrabble game made with SDL
