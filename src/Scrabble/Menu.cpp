@@ -14,7 +14,7 @@ Menu::Menu(SDL_Window* window, SDL_Renderer* renderer)
     m_selectedColor = {255, 255, 0, 255};   // Yellow
     m_backgroundColor = {34, 139, 34, 255}; // Forest Green
 
-    std::cout << "Menu initialized successfully!" << std::endl;
+    // Menu initialized successfully
 }
 
 Menu::~Menu() {
@@ -33,7 +33,7 @@ bool Menu::init() {
         return false;
     }
 
-    std::cout << "TTF_Init successful!" << std::endl;
+    // TTF_Init successful
 
     // Try to load fonts with multiple paths
     const char* fontPaths[] = {
@@ -49,10 +49,10 @@ bool Menu::init() {
     // Load title font
     m_titleFont = nullptr;
     for (const char* path : fontPaths) {
-        std::cout << "Trying to load title font from: " << path << std::endl;
+        // Trying to load title font from: path
         m_titleFont = TTF_OpenFont(path, 48);
         if (m_titleFont) {
-            std::cout << "Title font loaded successfully from: " << path << std::endl;
+            // Title font loaded successfully
             break;
         }
     }
@@ -69,10 +69,10 @@ bool Menu::init() {
     // Load menu font
     m_font = nullptr;
     for (const char* path : fontPaths) {
-        std::cout << "Trying to load menu font from: " << path << std::endl;
+        // Trying to load menu font from: path
         m_font = TTF_OpenFont(path, 32);
         if (m_font) {
-            std::cout << "Menu font loaded successfully from: " << path << std::endl;
+            // Menu font loaded successfully
             break;
         }
     }
@@ -86,7 +86,7 @@ bool Menu::init() {
         }
     }
 
-    std::cout << "Menu initialization completed!" << std::endl;
+    // Menu initialization completed
     return true;
 }
 

@@ -27,7 +27,7 @@ bool GameWindow::init() {
         "Scrabble Game",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        800, 800,  // Increased window size to fit larger board
+        900, 800,  // Increased window width to fit error label area
         SDL_WINDOW_SHOWN
     );
 

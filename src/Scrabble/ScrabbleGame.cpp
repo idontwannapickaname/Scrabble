@@ -8,7 +8,7 @@
 ScrabbleGame::ScrabbleGame(SDL_Renderer* renderer)
     : m_renderer(renderer), m_gameRunning(true), m_selectedTile(-1),
       m_selectedBoardX(-1), m_selectedBoardY(-1), m_isPlacingTile(false),
-      m_tileFont(nullptr), m_boardTileFont(nullptr), m_scoreFont(nullptr) {
+      m_isSwappingTile(false), m_hasSwappedThisTurn(false), m_tileFont(nullptr), m_boardTileFont(nullptr), m_scoreFont(nullptr) {
 
     // Initialize player scores
     m_player1Score = 0;
@@ -42,6 +42,11 @@ ScrabbleGame::ScrabbleGame(SDL_Renderer* renderer)
     m_submitButtonHovered = false;
     m_undoButtonHovered = false;
     m_skipButtonHovered = false;
+    m_swapButtonHovered = false;
+
+    // Initialize error message
+    m_errorMessage = "";
+    m_showError = false;
 }
 
 ScrabbleGame::~ScrabbleGame() {
@@ -91,17 +96,22 @@ bool ScrabbleGame::init() {
         m_tileRects[i] = {50 + i * 60, 750, 50, 50};  // Move tiles below player labels
     }
 
-    // Initialize buttons - 4 buttons thẳng hàng bên phải board
+        // Initialize buttons - 5 buttons thẳng hàng bên phải board
     m_quitButtonRect = {680, 50, 100, 40};      // Top button, cách board 30px
     m_submitButtonRect = {680, 100, 100, 40};   // Second button
-    m_undoButtonRect = {680, 150, 100, 40};     // Third button  
+    m_undoButtonRect = {680, 150, 100, 40};     // Third button
     m_skipButtonRect = {680, 200, 100, 40};     // Fourth button
+    m_swapButtonRect = {680, 250, 100, 40};     // Fifth button
+
+    // Initialize error label area below buttons
+    m_errorLabelRect = {700, 300, 180, 80};     // Error label below buttons, adjusted for 900px width
 
     // Initialize UI elements for click detection
     m_quitButton = {680, 50, 100, 40};          // Quit button
     m_submitButton = {680, 100, 100, 40};       // Submit button
     m_undoButton = {680, 150, 100, 40};         // Undo button
     m_skipButton = {680, 200, 100, 40};         // Skip button
+    m_swapButton = {680, 250, 100, 40};         // Swap button
 
     return true;
 }
@@ -211,11 +221,11 @@ void ScrabbleGame::initializeTileBag() {
 
 void ScrabbleGame::loadDictionary() {
     m_dictionary.clear();
-    
+
     // Try to load dictionary from assets folder
     std::string dictPath = "assets/dictionary/dictionary.txt";
     FILE* file = fopen(dictPath.c_str(), "r");
-    
+
     if (file) {
         char word[256];
         while (fgets(word, sizeof(word), file)) {
@@ -224,17 +234,17 @@ void ScrabbleGame::loadDictionary() {
             if (!cleanWord.empty() && cleanWord[cleanWord.length()-1] == '\n') {
                 cleanWord.erase(cleanWord.length()-1);
             }
-            
+
             // Convert to uppercase
             std::transform(cleanWord.begin(), cleanWord.end(), cleanWord.begin(), ::toupper);
-            
+
             // Only add words with length >= 2
             if (cleanWord.length() >= 2) {
                 m_dictionary.insert(cleanWord);
             }
         }
         fclose(file);
-        std::cout << "Loaded " << m_dictionary.size() << " words from dictionary" << std::endl;
+        // Dictionary loaded successfully
     } else {
         // If dictionary file not found, add some basic English words
         std::vector<std::string> basicWords = {
@@ -248,11 +258,11 @@ void ScrabbleGame::loadDictionary() {
             "HAPPY", "SAD", "ANGRY", "CALM", "QUIET", "LOUD", "SOFT", "HARD",
             "EASY", "DIFFICULT", "SIMPLE", "COMPLEX", "BEAUTIFUL", "UGLY", "CLEAN", "DIRTY"
         };
-        
+
         for (const auto& word : basicWords) {
             m_dictionary.insert(word);
         }
-        std::cout << "Using basic dictionary with " << m_dictionary.size() << " words" << std::endl;
+        // Using basic dictionary
     }
 }
 
@@ -331,6 +341,8 @@ void ScrabbleGame::resetGame() {
     m_selectedBoardX = -1;
     m_selectedBoardY = -1;
     m_isPlacingTile = false;
+    m_isSwappingTile = false;
+    m_hasSwappedThisTurn = false;
 
 }
 
@@ -353,49 +365,58 @@ void ScrabbleGame::handleEvent(const SDL_Event& event) {
             m_gameRunning = false;
             break;
 
-        case SDL_KEYDOWN:
-            switch (event.key.keysym.sym) {
-                case SDLK_ESCAPE:
-                    m_gameRunning = false;
-                    break;
+                        case SDL_KEYDOWN:
+                    switch (event.key.keysym.sym) {
+                        case SDLK_ESCAPE:
+                            m_gameRunning = false;
+                            break;
 
-                case SDLK_LEFT:
-                    if (m_selectedTile >= 0) {
-                        m_selectedTile = (m_selectedTile - 1 + 7) % 7;
-                    }
-                    break;
-
-                case SDLK_RIGHT:
-                    if (m_selectedTile >= 0) {
-                        m_selectedTile = (m_selectedTile + 1) % 7;
-                    }
-                    break;
-
-                case SDLK_SPACE:
-                    // Allow toggling placing mode even without tile selected
-                    m_isPlacingTile = !m_isPlacingTile;
-                    break;
-
-                case SDLK_RETURN:
-                    // Place tile logic
-                    if (m_isPlacingTile && m_selectedBoardX >= 0 && m_selectedBoardY >= 0) {
-                        const std::vector<char>& currentTiles = (m_currentPlayer == 1) ? m_player1Tiles : m_player2Tiles;
-                        if (m_selectedTile >= 0 && m_selectedTile < static_cast<int>(currentTiles.size())) {
-                            placeTile(m_selectedBoardX, m_selectedBoardY, currentTiles[m_selectedTile]);
-                            // Remove tile from current player's tiles
-                            if (m_currentPlayer == 1) {
-                                m_player1Tiles.erase(m_player1Tiles.begin() + m_selectedTile);
-                            } else {
-                                m_player2Tiles.erase(m_player2Tiles.begin() + m_selectedTile);
+                        case SDLK_LEFT:
+                            if (m_selectedTile >= 0) {
+                                m_selectedTile = (m_selectedTile - 1 + 7) % 7;
                             }
-                            // Don't refill tiles - only show remaining tiles
-                            m_selectedTile = -1;
-                            m_isPlacingTile = false;
-                        }
+                            break;
+
+                        case SDLK_RIGHT:
+                            if (m_selectedTile >= 0) {
+                                m_selectedTile = (m_selectedTile + 1) % 7;
+                            }
+                            break;
+
+                        case SDLK_SPACE:
+                            // Allow toggling placing mode even without tile selected
+                            m_isPlacingTile = !m_isPlacingTile;
+                            m_isSwappingTile = false; // Exit swap mode when entering place mode
+                            break;
+
+                        case SDLK_TAB:
+                            // Toggle swap mode - only if haven't swapped this turn
+                            if (m_selectedTile >= 0 && !m_hasSwappedThisTurn) {
+                                m_isSwappingTile = !m_isSwappingTile;
+                                m_isPlacingTile = false; // Exit place mode when entering swap mode
+                            }
+                            break;
+
+                        case SDLK_RETURN:
+                            // Place tile logic
+                            if (m_isPlacingTile && m_selectedBoardX >= 0 && m_selectedBoardY >= 0) {
+                                const std::vector<char>& currentTiles = (m_currentPlayer == 1) ? m_player1Tiles : m_player2Tiles;
+                                if (m_selectedTile >= 0 && m_selectedTile < static_cast<int>(currentTiles.size())) {
+                                    placeTile(m_selectedBoardX, m_selectedBoardY, currentTiles[m_selectedTile]);
+                                    // Remove tile from current player's tiles
+                                    if (m_currentPlayer == 1) {
+                                        m_player1Tiles.erase(m_player1Tiles.begin() + m_selectedTile);
+                                    } else {
+                                        m_player2Tiles.erase(m_player2Tiles.begin() + m_selectedTile);
+                                    }
+                                    // Don't refill tiles - only show remaining tiles
+                                    m_selectedTile = -1;
+                                    m_isPlacingTile = false;
+                                }
+                            }
+                            break;
                     }
                     break;
-            }
-            break;
 
         case SDL_MOUSEMOTION:
             // Handle button hover states
@@ -403,6 +424,7 @@ void ScrabbleGame::handleEvent(const SDL_Event& event) {
             m_submitButtonHovered = isSubmitButtonClicked(event.motion.x, event.motion.y);
             m_undoButtonHovered = isUndoButtonClicked(event.motion.x, event.motion.y);
             m_skipButtonHovered = isSkipButtonClicked(event.motion.x, event.motion.y);
+            m_swapButtonHovered = isSwapButtonClicked(event.motion.x, event.motion.y);
             break;
 
         case SDL_MOUSEBUTTONDOWN:
@@ -433,6 +455,14 @@ void ScrabbleGame::handleEvent(const SDL_Event& event) {
                 // Check if skip button was clicked
                 if (isSkipButtonClicked(mouseX, mouseY)) {
                     skipTurn();
+                    break;
+                }
+
+                // Check if swap button was clicked
+                if (isSwapButtonClicked(mouseX, mouseY)) {
+                    if (m_selectedTile >= 0 && !m_hasSwappedThisTurn) {
+                        swapSelectedTile();
+                    }
                     break;
                 }
 
@@ -492,6 +522,8 @@ void ScrabbleGame::render() {
     drawSubmitButton(); // Add submit button rendering
     drawUndoButton();  // Add undo button rendering
     drawSkipButton();  // Add skip button rendering
+    drawSwapButton();  // Add swap button rendering
+    drawErrorLabel();  // Add error label rendering
 
     SDL_RenderPresent(m_renderer);
 }
@@ -586,12 +618,18 @@ void ScrabbleGame::drawBoard() {
             }
         }
     }
-    
+
     // Draw turn information
     if (m_scoreFont) {
         std::string turnInfo = "Player " + std::to_string(m_currentPlayer) + "'s Turn";
         if (!m_currentTurnTiles.empty()) {
             turnInfo += " (" + std::to_string(m_currentTurnTiles.size()) + " tiles placed)";
+        }
+        if (m_isSwappingTile) {
+            turnInfo += " [SWAP MODE]";
+        }
+        if (m_hasSwappedThisTurn) {
+            turnInfo += " (Swapped)";
         }
         drawText(50, 20, turnInfo, m_scoreFont, m_currentPlayer == 1 ? m_player1Color : m_player2Color);
     }
@@ -619,8 +657,15 @@ void ScrabbleGame::drawPlayerTiles() {
             // Draw larger tiles for player tiles
             SDL_Rect tileRect = {m_tileRects[i].x + 5, m_tileRects[i].y + 5, 40, 40};
 
-            // Draw tile background
-            SDL_Color bgColor = selected ? m_selectedColor : m_tileColor;
+            // Draw tile background - different color for swap mode
+            SDL_Color bgColor;
+            if (selected && m_isSwappingTile) {
+                bgColor = {255, 165, 0, 255}; // Orange for swap mode
+            } else if (selected) {
+                bgColor = m_selectedColor;
+            } else {
+                bgColor = m_tileColor;
+            }
             SDL_SetRenderDrawColor(m_renderer, bgColor.r, bgColor.g, bgColor.b, bgColor.a);
             SDL_RenderFillRect(m_renderer, &tileRect);
 
@@ -842,6 +887,93 @@ bool ScrabbleGame::isSkipButtonClicked(int x, int y) {
             y >= m_skipButton.y && y <= m_skipButton.y + m_skipButton.h);
 }
 
+void ScrabbleGame::drawSwapButton() {
+    // Draw swap button background - grayed out if already swapped
+    SDL_Color buttonColor;
+    if (m_hasSwappedThisTurn) {
+        // Grayed out - already swapped this turn
+        buttonColor = {128, 128, 128, 255};
+    } else if (m_swapButtonHovered) {
+        buttonColor = {200, 100, 200, 255};
+    } else {
+        buttonColor = {150, 100, 200, 255};
+    }
+
+    SDL_SetRenderDrawColor(m_renderer, buttonColor.r, buttonColor.g, buttonColor.b, buttonColor.a);
+    SDL_RenderFillRect(m_renderer, &m_swapButtonRect);
+
+    // Draw swap button text
+    if (m_scoreFont) {
+        SDL_Surface* textSurface = TTF_RenderText_Solid(m_scoreFont, "SWAP", m_textColor);
+        if (textSurface) {
+            SDL_Texture* textTexture = SDL_CreateTextureFromSurface(m_renderer, textSurface);
+            if (textTexture) {
+                SDL_Rect textRect = {
+                    m_swapButtonRect.x + (m_swapButtonRect.w - textSurface->w) / 2,
+                    m_swapButtonRect.y + (m_swapButtonRect.h - textSurface->h) / 2,
+                    textSurface->w,
+                    textSurface->h
+                };
+                SDL_RenderCopy(m_renderer, textTexture, nullptr, &textRect);
+                SDL_DestroyTexture(textTexture);
+            }
+            SDL_FreeSurface(textSurface);
+        }
+    }
+}
+
+bool ScrabbleGame::isSwapButtonClicked(int x, int y) {
+    return (x >= m_swapButton.x && x <= m_swapButton.x + m_swapButton.w &&
+            y >= m_swapButton.y && y <= m_swapButton.y + m_swapButton.h);
+}
+
+void ScrabbleGame::setErrorMessage(const std::string& message) {
+    m_errorMessage = message;
+    m_showError = true;
+}
+
+void ScrabbleGame::drawErrorLabel() {
+    if (!m_showError || m_errorMessage.empty()) {
+        return; // Don't draw if no error
+    }
+
+    // Draw error label background
+    SDL_SetRenderDrawColor(m_renderer, 255, 200, 200, 255); // Light red background
+    SDL_RenderFillRect(m_renderer, &m_errorLabelRect);
+
+    // Draw error label border
+    SDL_SetRenderDrawColor(m_renderer, 255, 0, 0, 255); // Red border
+    SDL_RenderDrawRect(m_renderer, &m_errorLabelRect);
+
+    // Draw error message text
+    if (m_scoreFont) {
+        // Split message into lines for better display
+        std::vector<std::string> lines;
+        std::string currentLine = "";
+
+        for (char c : m_errorMessage) {
+            if (c == '\n') {
+                lines.push_back(currentLine);
+                currentLine = "";
+            } else {
+                currentLine += c;
+            }
+        }
+        if (!currentLine.empty()) {
+            lines.push_back(currentLine);
+        }
+
+        // Draw each line
+        int yOffset = m_errorLabelRect.y + 5;
+        for (const auto& line : lines) {
+            if (!line.empty()) {
+                drawText(m_errorLabelRect.x + 5, yOffset, line, m_scoreFont, {255, 0, 0, 255});
+                yOffset += 20; // Line spacing
+            }
+        }
+    }
+}
+
 void ScrabbleGame::switchPlayer() {
     m_currentPlayer = (m_currentPlayer == 1) ? 2 : 1;
 
@@ -850,6 +982,12 @@ void ScrabbleGame::switchPlayer() {
     m_selectedBoardX = -1;
     m_selectedBoardY = -1;
     m_isPlacingTile = false;
+    m_isSwappingTile = false;
+    m_hasSwappedThisTurn = false;
+
+    // Clear error message for new player
+    m_showError = false;
+    m_errorMessage = "";
 
     // Clear current turn tiles
     m_currentTurnTiles.clear();
@@ -919,25 +1057,25 @@ bool ScrabbleGame::isValidWord(const std::string& word) {
 
 std::vector<std::string> ScrabbleGame::findWordsOnBoard() {
     std::vector<std::string> words;
-    
+
     // Find horizontal words
     for (int row = 0; row < BOARD_SIZE; ++row) {
         std::vector<std::string> horizontalWords = findWordsInDirection(row, 0, true);
         words.insert(words.end(), horizontalWords.begin(), horizontalWords.end());
     }
-    
+
     // Find vertical words
     for (int col = 0; col < BOARD_SIZE; ++col) {
         std::vector<std::string> verticalWords = findWordsInDirection(0, col, false);
         words.insert(words.end(), verticalWords.begin(), verticalWords.end());
     }
-    
+
     return words;
 }
 
 std::vector<std::string> ScrabbleGame::findWordsInDirection(int startRow, int startCol, bool horizontal) {
     std::vector<std::string> words;
-    
+
     if (horizontal) {
         std::string currentWord = "";
         for (int col = 0; col < BOARD_SIZE; ++col) {
@@ -969,28 +1107,28 @@ std::vector<std::string> ScrabbleGame::findWordsInDirection(int startRow, int st
             words.push_back(currentWord);
         }
     }
-    
+
     return words;
 }
 
 int ScrabbleGame::calculateWordScore(const std::string& word, int row, int col, bool horizontal) {
     int score = 0;
     int wordMultiplier = 1;
-    
+
     if (horizontal) {
         for (size_t i = 0; i < word.length(); ++i) {
             int currentRow = row;
             int currentCol = col + i;
-            
+
             if (currentCol < BOARD_SIZE) {
                 int letterScore = m_tileValues[word[i]];
-                
+
                 if (m_boardWordMultipliers[currentRow][currentCol]) {
                     wordMultiplier *= m_boardMultipliers[currentRow][currentCol];
                 } else {
                     letterScore *= m_boardMultipliers[currentRow][currentCol];
                 }
-                
+
                 score += letterScore;
             }
         }
@@ -998,21 +1136,21 @@ int ScrabbleGame::calculateWordScore(const std::string& word, int row, int col, 
         for (size_t i = 0; i < word.length(); ++i) {
             int currentRow = row + i;
             int currentCol = col;
-            
+
             if (currentRow < BOARD_SIZE) {
                 int letterScore = m_tileValues[word[i]];
-                
+
                 if (m_boardWordMultipliers[currentRow][currentCol]) {
                     wordMultiplier *= m_boardMultipliers[currentRow][currentCol];
                 } else {
                     letterScore *= m_boardMultipliers[currentRow][currentCol];
                 }
-                
+
                 score += letterScore;
             }
         }
     }
-    
+
     return score * wordMultiplier;
 }
 
@@ -1030,15 +1168,15 @@ int ScrabbleGame::calculateScore(const std::string& word) {
 
 bool ScrabbleGame::submitTurn() {
     if (m_currentTurnTiles.empty()) {
-        std::cout << "No tiles placed this turn!" << std::endl;
+        // No tiles placed this turn
         return false;
     }
 
     // Find words created by the newly placed tiles
     std::vector<std::string> newWords = findNewWords();
-    
+
     if (newWords.empty()) {
-        std::cout << "No valid words created with new tiles!" << std::endl;
+        // No valid words created with new tiles
         return false;
     }
 
@@ -1046,7 +1184,7 @@ bool ScrabbleGame::submitTurn() {
     std::vector<std::string> validWords;
     std::vector<std::string> invalidWords;
     int totalScore = 0;
-    
+
     for (const auto& word : newWords) {
         if (isValidWord(word)) {
             validWords.push_back(word);
@@ -1057,7 +1195,7 @@ bool ScrabbleGame::submitTurn() {
             invalidWords.push_back(word);
         }
     }
-    
+
     // Check if there are any invalid words - if so, reject the turn
     if (!invalidWords.empty()) {
         std::cout << "Cannot submit turn - invalid words found:" << std::endl;
@@ -1065,62 +1203,67 @@ bool ScrabbleGame::submitTurn() {
             std::cout << "  - '" << word << "' is not in dictionary" << std::endl;
         }
         std::cout << "Please fix invalid words or use UNDO to remove tiles" << std::endl;
+
+        // Set error message for display
+        std::string errorMsg = "Unvalid Word:\n";
+        for (const auto& word : invalidWords) {
+            errorMsg += "- " + word + "\n";
+        }
+        setErrorMessage(errorMsg);
+
         return false;
     }
-    
+
     // All words are valid - proceed with scoring
     if (m_currentPlayer == 1) {
         m_player1Score += totalScore;
-        std::cout << "Player 1 scored " << totalScore << " points!" << std::endl;
     } else {
         m_player2Score += totalScore;
-        std::cout << "Player 2 scored " << totalScore << " points!" << std::endl;
     }
-    
-    // Display found words
-    std::cout << "Valid words created: ";
-    for (const auto& word : validWords) {
-        std::cout << word << " ";
-    }
-    std::cout << std::endl;
-    
-    // Clear current turn tiles after successful submission
+
+    // Words validated successfully
+
+        // Clear current turn tiles after successful submission
     m_currentTurnTiles.clear();
-    
+
+    // Clear error message on successful submission
+    m_showError = false;
+    m_errorMessage = "";
+
     return true;
 }
 
 std::vector<std::string> ScrabbleGame::findNewWords() {
     std::vector<std::string> newWords;
-    
+
     // For each newly placed tile, check for words in both directions
     for (const auto& tilePos : m_currentTurnTiles) {
         int row = tilePos.first;
         int col = tilePos.second;
-        
+
         // Check horizontal words containing this tile
         std::string horizontalWord = findWordAtPosition(row, col, true);
         if (horizontalWord.length() >= 2 && containsNewTile(horizontalWord, row, col, true)) {
             newWords.push_back(horizontalWord);
         }
-        
+
         // Check vertical words containing this tile
         std::string verticalWord = findWordAtPosition(row, col, false);
         if (verticalWord.length() >= 2 && containsNewTile(verticalWord, row, col, false)) {
             newWords.push_back(verticalWord);
         }
     }
-    
+
     // Remove duplicates
     std::sort(newWords.begin(), newWords.end());
     newWords.erase(std::unique(newWords.begin(), newWords.end()), newWords.end());
-    
+
     return newWords;
 }
 
 std::string ScrabbleGame::findWordAtPosition(int row, int col, bool horizontal) {
     std::string word = "";
-    
+
     if (horizontal) {
         // Find start of word (go left until empty or edge)
         int startCol = col;
@@ -1128,7 +1271,7 @@ std::string ScrabbleGame::findWordAtPosition(int row, int col, bool horizontal) 
             startCol--;
         }
         startCol++; // Move back to first letter
-        
+
         // Build word from start to end
         for (int c = startCol; c < BOARD_SIZE && m_board[row][c] != ' '; c++) {
             word += m_board[row][c];
@@ -1140,13 +1283,13 @@ std::string ScrabbleGame::findWordAtPosition(int row, int col, bool horizontal) 
             startRow--;
         }
         startRow++; // Move back to first letter
-        
+
         // Build word from start to end
         for (int r = startRow; r < BOARD_SIZE && m_board[r][col] != ' '; r++) {
             word += m_board[r][col];
         }
     }
-    
+
     return word;
 }
 
@@ -1159,7 +1302,7 @@ bool ScrabbleGame::containsNewTile(const std::string& word, int row, int col, bo
             startCol--;
         }
         startCol++;
-        
+
         // Check if any position in this word contains a new tile
         for (size_t i = 0; i < word.length(); i++) {
             int currentCol = startCol + i;
@@ -1178,7 +1321,7 @@ bool ScrabbleGame::containsNewTile(const std::string& word, int row, int col, bo
             startRow--;
         }
         startRow++;
-        
+
         // Check if any position in this word contains a new tile
         for (size_t i = 0; i < word.length(); i++) {
             int currentRow = startRow + i;
@@ -1191,7 +1334,7 @@ bool ScrabbleGame::containsNewTile(const std::string& word, int row, int col, bo
             }
         }
     }
-    
+
     return false;
 }
 
@@ -1199,7 +1342,7 @@ int ScrabbleGame::calculateWordScoreWithPosition(const std::string& word) {
     // Find the word's position on the board
     int wordRow = -1, wordCol = -1;
     bool isHorizontal = false;
-    
+
     // Search for this word on the board
     for (int row = 0; row < BOARD_SIZE; row++) {
         for (int col = 0; col < BOARD_SIZE; col++) {
@@ -1216,7 +1359,7 @@ int ScrabbleGame::calculateWordScoreWithPosition(const std::string& word) {
                     break;
                 }
             }
-            
+
             // Check vertical
             if (row + word.length() <= BOARD_SIZE) {
                 std::string foundWord = "";
@@ -1233,7 +1376,7 @@ int ScrabbleGame::calculateWordScoreWithPosition(const std::string& word) {
         }
         if (wordRow != -1) break;
     }
-    
+
     if (wordRow == -1) {
         // Word not found, return basic score
         int basicScore = 0;
@@ -1242,57 +1385,99 @@ int ScrabbleGame::calculateWordScoreWithPosition(const std::string& word) {
         }
         return basicScore;
     }
-    
+
     // Calculate score with multipliers
     return calculateWordScore(word, wordRow, wordCol, isHorizontal);
 }
 
 void ScrabbleGame::undoLastMove() {
     if (m_currentTurnTiles.empty()) {
-        std::cout << "No tiles to undo!" << std::endl;
+        // No tiles to undo
         return;
     }
-    
+
     // Get the last placed tile
     auto lastTile = m_currentTurnTiles.back();
     int row = lastTile.first;
     int col = lastTile.second;
-    
+
     // Get the tile character
     char tileChar = m_board[row][col];
-    
+
     // Remove tile from board
     m_board[row][col] = ' ';
-    
+
     // Remove from current turn tiles
     m_currentTurnTiles.pop_back();
-    
+
     // Add tile back to current player's rack
     if (m_currentPlayer == 1) {
         m_player1Tiles.push_back(tileChar);
     } else {
         m_player2Tiles.push_back(tileChar);
     }
-    
-    std::cout << "Undid placement of '" << tileChar << "' at (" << row << "," << col << ")" << std::endl;
-    std::cout << "Tiles remaining to place: " << m_currentTurnTiles.size() << std::endl;
+
+    // Tile placement undone successfully
+}
+
+void ScrabbleGame::swapSelectedTile() {
+    if (m_selectedTile < 0) {
+        return; // No tile selected
+    }
+
+    if (m_hasSwappedThisTurn) {
+        std::cout << "Already swapped this turn!" << std::endl;
+        return; // Already swapped this turn
+    }
+
+    // Get current player's tiles
+    std::vector<char>& currentTiles = (m_currentPlayer == 1) ? m_player1Tiles : m_player2Tiles;
+
+    if (m_selectedTile >= static_cast<int>(currentTiles.size())) {
+        return; // Invalid tile index
+    }
+
+    // Get the tile to swap
+    char tileToSwap = currentTiles[m_selectedTile];
+
+    // Add a new tile from the bag
+    if (!m_tileBag.empty()) {
+        char newTile = m_tileBag.back();
+        m_tileBag.pop_back();
+
+        // Replace the tile at the same position (swap in place)
+        currentTiles[m_selectedTile] = newTile;
+
+        std::cout << "Swapped '" << tileToSwap << "' for '" << newTile <<"'"<< std::endl;
+
+        // Mark that we've swapped this turn
+        m_hasSwappedThisTurn = true;
+    } else {
+        // If bag is empty, cannot swap
+        std::cout << "Cannot swap - tile bag is empty!" << std::endl;
+        return;
+    }
+
+    // Reset selection
+    m_selectedTile = -1;
+    m_isSwappingTile = false;
 }
 
 void ScrabbleGame::skipTurn() {
     if (m_currentTurnTiles.empty()) {
-        std::cout << "Player " << m_currentPlayer << " skipped turn (no tiles placed)" << std::endl;
+        // Player skipped turn (no tiles placed)
     } else {
-        std::cout << "Player " << m_currentPlayer << " skipped turn - returning " << m_currentTurnTiles.size() << " tiles to rack" << std::endl;
-        
+        // Player skipped turn - returning tiles to rack
+
         // Return all placed tiles to the current player's rack
         for (const auto& tilePos : m_currentTurnTiles) {
             int row = tilePos.first;
             int col = tilePos.second;
             char tileChar = m_board[row][col];
-            
+
             // Remove from board
             m_board[row][col] = ' ';
-            
+
             // Add back to player's rack
             if (m_currentPlayer == 1) {
                 m_player1Tiles.push_back(tileChar);
@@ -1300,11 +1485,11 @@ void ScrabbleGame::skipTurn() {
                 m_player2Tiles.push_back(tileChar);
             }
         }
-        
+
         // Clear current turn tiles
         m_currentTurnTiles.clear();
     }
-    
+
     // Switch to next player
     switchPlayer();
 }

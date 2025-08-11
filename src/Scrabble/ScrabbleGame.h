@@ -35,6 +35,10 @@ private:
     // Track current turn tiles
     std::vector<std::pair<int, int>> m_currentTurnTiles; // Track positions of tiles placed this turn
 
+    // Error message for invalid words
+    std::string m_errorMessage;
+    bool m_showError;
+
     // UI elements
     SDL_Rect m_boardRect;
     SDL_Rect m_tileRects[7];
@@ -46,10 +50,13 @@ private:
     SDL_Rect m_submitButtonRect; // Add submit button
     SDL_Rect m_undoButtonRect; // Add undo button
     SDL_Rect m_skipButtonRect; // Add skip button
+    SDL_Rect m_swapButtonRect; // Add swap button
+    SDL_Rect m_errorLabelRect; // Add error label area
     SDL_Rect m_quitButton;      // Quit button for click detection
     SDL_Rect m_submitButton;    // Submit button for click detection
     SDL_Rect m_undoButton;      // Undo button for click detection
     SDL_Rect m_skipButton;      // Skip button for click detection
+    SDL_Rect m_swapButton;      // Swap button for click detection
 
     // Colors
     SDL_Color m_boardColor;
@@ -66,6 +73,7 @@ private:
     bool m_submitButtonHovered;
     bool m_undoButtonHovered;
     bool m_skipButtonHovered;
+    bool m_swapButtonHovered;
 
     // Fonts
     TTF_Font* m_tileFont;
@@ -77,6 +85,8 @@ private:
     int m_selectedBoardX;
     int m_selectedBoardY;
     bool m_isPlacingTile;
+    bool m_isSwappingTile; // Track if player is in swap mode
+    bool m_hasSwappedThisTurn; // Track if player has already swapped this turn
 
     // Tile values
     std::map<char, int> m_tileValues;
@@ -139,6 +149,11 @@ public:
     void drawSkipButton();       // New skip button drawing
     bool isUndoButtonClicked(int x, int y);    // New undo button click detection
     bool isSkipButtonClicked(int x, int y);    // New skip button click detection
+    void drawSwapButton();       // New swap button drawing
+    bool isSwapButtonClicked(int x, int y);    // New swap button click detection
+    void swapSelectedTile();     // New swap tile method
+    void drawErrorLabel();       // New error label drawing
+    void setErrorMessage(const std::string& message); // Set error message
 };
 
 #endif

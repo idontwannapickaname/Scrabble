@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1754293321 source:d:\codesdl\sdlproject\scrabble\main.cpp
+1754894896 source:d:\codesdl\sdlproject\scrabble\main.cpp
 	<exception>
 	<string>
 	<iostream>
@@ -403,7 +403,7 @@
 	<string>
 	<vector>
 
-1754290572 source:d:\codesdl\sdlproject\scrabble\menu.cpp
+1754893064 source:d:\codesdl\sdlproject\scrabble\menu.cpp
 	"Menu.h"
 	<iostream>
 
@@ -417,7 +417,7 @@
 	<string>
 	"ScrabbleGame.h"
 
-1754879867 d:\codesdl\sdlproject\scrabble\scrabblegame.h
+1754894781 d:\codesdl\sdlproject\scrabble\scrabblegame.h
 	<SDL2/SDL.h>
 	<SDL2/SDL_ttf.h>
 	<vector>
@@ -425,11 +425,11 @@
 	<map>
 	<set>
 
-1754293912 source:d:\codesdl\sdlproject\scrabble\gamewindow.cpp
+1754895059 source:d:\codesdl\sdlproject\scrabble\gamewindow.cpp
 	"GameWindow.h"
 	<iostream>
 
-1754880031 source:d:\codesdl\sdlproject\scrabble\scrabblegame.cpp
+1754894896 source:d:\codesdl\sdlproject\scrabble\scrabblegame.cpp
 	"ScrabbleGame.h"
 	<iostream>
 	<algorithm>
